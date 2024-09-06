@@ -6,7 +6,7 @@ Before beginning the data cleaning process, the raw data was viewed to understan
 
 ``` Sql
 SELECT * 
-FROM fifa21_raw_data;
+FROM [dbo].[fifa21_raw_data];
 ```
 ## 3. Dropping Unnecessary Columns
 Several columns were identified as irrelevant to the analysis, including photoUrl, playerUrl, Name, and LOAN_DATE_END. These columns were removed to reduce data redundancy and improve the efficiency of subsequent queries.
@@ -55,33 +55,34 @@ SET Contract = REPLACE(Contract, '~', '-');
 ```
 
 ## 6. Identifying and Removing Duplicate Records
-Duplicate records were identified based on the FullName column. These duplicates were then removed, retaining only the first occurrence of each name.
+Duplicate records were identified based on the FullName, Club, Nationality column. These duplicates were then removed, retaining only the first occurrence of each data for the respectively column.
 
 ```sql
 
-SELECT FullName, COUNT(*) AS DUPLICATECOUNT
+SELECT FullName,CLUB, NATIONALITY, COUNT(*) AS DUPLICATECOUNT
 FROM [dbo].[fifa21_raw_data]
-GROUP BY FullName
-HAVING COUNT(*) > 1;
+GROUP BY FullName,CLUB, NATIONALITY
+HAVING COUNT(*)>1;
 
 WITH CTE AS (
-    SELECT 
-        FullName,
-        ROW_NUMBER() OVER (PARTITION BY FullName ORDER BY (SELECT NULL)) AS ROWNUM
+    SELECT Fullname, club, nationality,
+           ROW_NUMBER() OVER (PARTITION BY fullname, club, nationality ORDER BY (SELECT NULL)) AS rn
     FROM [dbo].[fifa21_raw_data]
 )
-DELETE FROM CTE WHERE ROWNUM > 1;
+DELETE FROM CTE
+WHERE rn > 1;
+
 ```
 ## 7. Handling Empty Rows
 Rows with missing values in the Hits column were identified and replaced to ensure data completeness.
 
 ```sql
 SELECT Hits
-FROM fifa21_raw_data
+FROM [dbo].[fifa21_raw_data]
 WHERE Hits IS NULL;
 -- REPLACE NULL ON THE HITS COLUMN WITH '0'
 
-UPDATE [dbo].[fifa]
+UPDATE [dbo].[fifa21_raw_data]
 SET Hits= COALESCE (Hits,'NULL','0')
 
 ```
@@ -108,14 +109,12 @@ SET FullName = REPLACE(REPLACE(FullName, '?', 's'), '3', '');
 ROLLBACK;
 
 BEGIN TRANSACTION;
-UPDATE [dbo].[fifa]
+UPDATE [dbo].[fifa21_raw_data]
 SET Club = REPLACE(Club, '?', 'S')
 ROLLBACK;
 ```
 ## 9. Conclusion
 The data cleaning and transformation process ensured that the FIFA 21 dataset was free of redundant columns, duplicate records, and unwanted characters. These steps were crucial in preparing the data for accurate and meaningful analysis.
-
-This report outlines the SQL operations performed to achieve a clean and consistent dataset, ready for further analytical tasks.
 
 👍
 💻
