@@ -23,7 +23,7 @@ To improve clarity, the LongName column was renamed to FullName. This change ens
 EXEC SP_RENAME '[dbo].[fifa21_raw_data].LongName', 'FullName', 'COLUMN';
 ```
 ## 5. Cleaning Data in Specific Columns
-Several columns contained placeholder characters ('?') that needed to be removed. The IR, W_F, and SM columns were cleaned to replace these characters with empty strings.
+Several columns contained placeholder characters ('?') that needed to be removed. The IR, W_F, and SM columns were cleaned to replace these characters with empty strings,and the Value Wages and Release_clause columns placeholder ('M') and ('K') were removed aswell.
 
 ```sql
 UPDATE [dbo].[fifa21_raw_data]
@@ -34,8 +34,19 @@ SET W_F = REPLACE(W_F, '?', '');
 
 UPDATE [dbo].[fifa21_raw_data]
 SET SM = REPLACE(SM, '?', '');
-In the Contract column, tildes ('~') were replaced with hyphens ('-') for consistency in formatting.
+
+UPDATE [dbo].[fifa21_raw_data]
+SET value= REPLACE(Value,'M','Million')
+
+UPDATE [dbo].[fifa21_raw_data]
+SET Wage= REPLACE(Wage,'k','000')
+
+UPDATE [dbo].[fifa21_raw_data]
+SET Release_Clause= REPLACE(Release_Clause,'M','Million')
 ```
+
+In the Contract column, tildes ('~') were replaced with hyphens ('-') for consistency in formatting.
+
 
 ```sql
 
@@ -61,36 +72,44 @@ WITH CTE AS (
 )
 DELETE FROM CTE WHERE ROWNUM > 1;
 ```
-
-SELECT DISTINCT FullName
-FROM [dbo].[fifa21_raw_data];
 ## 7. Handling Empty Rows
-Rows with missing values in the Hits column were identified to ensure data completeness.
+Rows with missing values in the Hits column were identified and replaced to ensure data completeness.
 
 ```sql
 SELECT Hits
 FROM fifa21_raw_data
 WHERE Hits IS NULL;
+-- REPLACE NULL ON THE HITS COLUMN WITH '0'
+
+UPDATE [dbo].[fifa]
+SET Hits= COALESCE (Hits,'NULL','0')
+
 ```
 ## 8. Removing Unwanted Characters from Strings
 The FullName and Club columns were checked for non-alphabetic characters. Records containing such characters were identified and corrected.
 
 ```sql
+-- script to identify fullname column non-alphaabetis characters
 SELECT FullName
 FROM [dbo].[fifa21_raw_data]
 WHERE FullName NOT LIKE '%[A-Za-z]%';
 
+-- script to identify club column non-alphaabetis characters
 SELECT Club
 FROM [dbo].[fifa21_raw_data]
 WHERE Club NOT LIKE '%[A-Za-z]%';
 ```
-To remove the unwanted characters from the FullName column, a transaction was initiated. The unwanted characters were replaced with appropriate substitutes or removed entirely.
+To remove the unwanted characters from the FullName and club column, a transaction was initiated. The unwanted characters were replaced with appropriate substitutes or removed entirely.
 
 ```sql
-
 BEGIN TRANSACTION;
 UPDATE [dbo].[fifa21_raw_data]
 SET FullName = REPLACE(REPLACE(FullName, '?', 's'), '3', '');
+ROLLBACK;
+
+BEGIN TRANSACTION;
+UPDATE [dbo].[fifa]
+SET Club = REPLACE(Club, '?', 'S')
 ROLLBACK;
 ```
 ## 9. Conclusion
